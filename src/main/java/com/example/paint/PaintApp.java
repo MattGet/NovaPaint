@@ -260,11 +260,16 @@ public class PaintApp extends Application {
         // --- Text ---
         Label textHdr = new Label("Text");
         textHdr.getStyleClass().add("section");
+
         var fontRow1 = new HBox(10, new Label("Family"), state.getFontFamilyBox());
         var fontRow2 = new HBox(10, new Label("Size"), state.getFontSizeSpinner(),
                 state.getBoldCheck(), state.getItalicCheck());
+        var fontRow3 = new HBox(10, new Label("Color"), state.getTextColorPicker()); // <-- add this
+
         fontRow1.setAlignment(Pos.CENTER_LEFT);
         fontRow2.setAlignment(Pos.CENTER_LEFT);
+        fontRow3.setAlignment(Pos.CENTER_LEFT);
+
 
         // --- Bucket Fill controls (tolerance/connectivity/expand) ---
         Label bucketHdr = new Label("Bucket Fill");
@@ -288,7 +293,7 @@ public class PaintApp extends Application {
         VBox strokeCard = card(strokeHdr, strokePicker, strokePalette);
         VBox fillCard   = card(fillHdr, fillPicker, fillPaletteMain, fillPaletteNeutrals);
         VBox brushCard  = card(brushHdr, brushRow);
-        VBox textCard   = card(textHdr, fontRow1, fontRow2);
+        VBox textCard   = card(textHdr, fontRow1, fontRow2, fontRow3); // <-- include fontRow3
         VBox bucketCard = card(bucketHdr,
                 new HBox(10, new Label("Tolerance"), tol),
                 new HBox(10, new Label("Expand px"), expand),

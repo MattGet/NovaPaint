@@ -43,6 +43,8 @@ public class CanvasState {
 
     private final ColorPicker strokePicker = new ColorPicker(stroke);
     private final ColorPicker fillPicker = new ColorPicker(fill);
+    private final javafx.scene.control.ColorPicker textColorPicker =
+            new javafx.scene.control.ColorPicker(javafx.scene.paint.Color.BLACK);
     private final Slider brushSlider = new Slider(1, 50, brush);
 
     private final ComboBox<String> fontFamily = new ComboBox<>();
@@ -133,6 +135,10 @@ public class CanvasState {
 
     public ColorPicker getStrokePicker(){ return strokePicker; }
     public ColorPicker getFillPicker(){ return fillPicker; }
+    // --- Text color (separate from Fill) ---
+    public javafx.scene.control.ColorPicker getTextColorPicker() { return textColorPicker; }
+    public javafx.scene.paint.Color getTextColor() { return textColorPicker.getValue(); }
+
     public Slider getBrushSlider(){ return brushSlider; }
     public ComboBox<String> getFontFamilyBox(){ return fontFamily; }
     public Spinner<Integer> getFontSizeSpinner(){ return fontSize; }
