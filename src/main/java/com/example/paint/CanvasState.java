@@ -30,12 +30,11 @@ public class CanvasState {
     private final Canvas base = new Canvas(1600, 1200);
     private final Canvas overlay = new Canvas(1600, 1200);
 
-    private final Group content = new Group(base, overlay); // single transform target
+    private final Group content = new Group(base, overlay); // transform target
     private final Pane container = new Pane(content);
     private final StackPane viewport = new StackPane(container);
 
     private final HBox statusBar = new HBox();
-    private final Label statusLbl = new Label("Ready");
     private final StringProperty statusProp = new SimpleStringProperty("Zoom 1.00×   Pan(0, 0)");
 
     private Color stroke = Color.BLACK;
@@ -60,17 +59,23 @@ public class CanvasState {
     private static final double MIN_ZOOM = 0.1, MAX_ZOOM = 8.0;
 
     public CanvasState() {
-        clearBase(Color.WHITE);
+        // start fully transparent
+        clearBaseTransparent();
 
         content.getTransforms().setAll(translate, scale);
 
-        container.setPrefSize(1200, 800);
+        // Force the area AROUND the canvas to white, regardless of theme
         container.getStyleClass().add("canvas-container");
+        container.setPrefSize(1200, 800);
+        container.setStyle("-fx-background-color: white;");   // <— always white
         clipToBounds(container);
 
         viewport.setPadding(new Insets(10));
-        statusBar.getChildren().add(statusLbl);
-        statusBar.getStyleClass().add("statusbar");
+        viewport.setStyle("-fx-background-color: white;");    // <— always white
+
+        statusBar.getChildren().add(new Label());
+        statusBar.getChildren().get(0).styleProperty().set(""); // noop; keep minimal
+        refreshHud();
 
         strokePicker.setOnAction(e -> stroke = strokePicker.getValue());
         fillPicker.setOnAction(e -> fill = fillPicker.getValue());
@@ -78,12 +83,9 @@ public class CanvasState {
 
         fontFamily.getItems().addAll("Arial","System","Courier New","Times New Roman","Verdana","Consolas");
         fontFamily.setValue("Arial");
-
-        statusLbl.textProperty().bind(statusProp);
-        refreshHud();
     }
 
-    // Public UI getters
+    // ---------- UI getters ----------
     public Canvas getBase() { return base; }
     public Canvas getOverlay() { return overlay; }
     public StackPane getViewport() { return viewport; }
@@ -104,6 +106,7 @@ public class CanvasState {
     public int getFontSize(){ return fontSize.getValue(); }
     public boolean isBold(){ return bold.isSelected(); }
     public boolean isItalic(){ return italic.isSelected(); }
+    public double getZoom(){ return zoom; }
 
     public WritableImage getSelection(){ return selection; }
     public void setSelection(WritableImage img){ selection = img; }
@@ -114,7 +117,7 @@ public class CanvasState {
     public void setStatus(String text){ statusProp.set(text); refreshHud(); }
     public StringProperty statusProperty(){ return statusProp; }
 
-    // View / Pan / Zoom
+    // ---------- Pan & Zoom ----------
     public void applyPanZoom(){
         scale.setX(zoom);
         scale.setY(zoom);
@@ -156,7 +159,7 @@ public class CanvasState {
             if (dy == 0) return;
             ev.consume();
 
-            double step = 1.10; // 10% per notch
+            double step = 1.10;
             if (ev.isShiftDown()) step = Math.pow(step, 1.8);
             if (ev.isControlDown() || ev.isMetaDown()) step = Math.pow(step, 0.35);
 
@@ -169,23 +172,31 @@ public class CanvasState {
         return Math.max(lo, Math.min(hi, v));
     }
 
-    // Resize / Reset
+    // ---------- Resize & Reset (transparent-safe) ----------
     public void resizeCanvas(double newW, double newH) {
         if (newW <= 1 || newH <= 1) return;
-        WritableImage snap = base.snapshot(null, null);
 
-        base.setWidth(newW); base.setHeight(newH);
-        overlay.setWidth(newW); overlay.setHeight(newH);
+        // snapshot with transparent fill to preserve alpha
+        SnapshotParameters sp = new SnapshotParameters();
+        sp.setFill(Color.TRANSPARENT);
+        WritableImage snap = base.snapshot(sp, null);
 
+        base.setWidth(newW);
+        base.setHeight(newH);
+        overlay.setWidth(newW);
+        overlay.setHeight(newH);
+
+        // DO NOT paint white — leave transparent background
         GraphicsContext g = base.getGraphicsContext2D();
-        g.setFill(Color.WHITE);
-        g.fillRect(0, 0, newW, newH);
+        g.clearRect(0, 0, newW, newH); // full transparent
         g.drawImage(snap, 0, 0);
 
         clearOverlay();
     }
 
     public void bindToScrollPane(ScrollPane sp) {
+        // force the scrollpane backgrounds to white as well
+        sp.setStyle("-fx-background: white; -fx-background-color: white;");
         ChangeListener<Bounds> l = (obs, oldV, b) -> resizeCanvas(b.getWidth(), b.getHeight());
         sp.viewportBoundsProperty().addListener(l);
         Bounds b = sp.getViewportBounds();
@@ -193,7 +204,7 @@ public class CanvasState {
     }
 
     public void resetAll() {
-        clearBase(Color.WHITE);
+        clearBaseTransparent();
         clearOverlay();
         selection = null;
         selX = selY = 0;
@@ -203,23 +214,31 @@ public class CanvasState {
         setStatus("New canvas");
     }
 
-    // Drawing helpers
+    // ---------- Drawing helpers ----------
     public void clearOverlay(){
         overlay.getGraphicsContext2D().clearRect(0,0,overlay.getWidth(), overlay.getHeight());
     }
 
-    public void drawOverlayImage(WritableImage img, double x, double y){
+    /** Draw an image onto the overlay at (x,y). Use for previews/selection ghosts. */
+    public void drawOverlayImage(WritableImage img, double x, double y) {
         overlay.getGraphicsContext2D().drawImage(img, x, y);
     }
 
-    public void commitOverlay(){
+    /** Merge the current overlay into the base, preserving transparency, then clear the overlay. */
+    public void commitOverlay() {
         SnapshotParameters sp = new SnapshotParameters();
-        sp.setFill(Color.TRANSPARENT);
-        WritableImage img = overlay.snapshot(sp, null);
-        clearOverlay();
-        base.getGraphicsContext2D().drawImage(img, 0, 0);
+        sp.setFill(Color.TRANSPARENT);                      // keep transparent background
+        WritableImage img = overlay.snapshot(sp, null);     // snapshot only what’s on the overlay
+        clearOverlay();                                     // wipe overlay after capture
+        base.getGraphicsContext2D().drawImage(img, 0, 0);   // composite onto base
     }
 
+    /** Fully transparent clear of the base canvas. */
+    public void clearBaseTransparent(){
+        base.getGraphicsContext2D().clearRect(0,0,base.getWidth(), base.getHeight());
+    }
+
+    /** Kept for compatibility if you ever want a colored fill. */
     public void clearBase(Color c){
         GraphicsContext g = base.getGraphicsContext2D();
         g.setFill(c);
@@ -228,15 +247,20 @@ public class CanvasState {
 
     public void openImage(File f){
         var img = new Image(f.toURI().toString());
-        clearBase(Color.WHITE);
+        clearBaseTransparent();                      // keep transparent outside the image
         base.getGraphicsContext2D().drawImage(img, 0, 0);
     }
 
     public void saveImage(File f){
-        var snap = base.snapshot(null, null);
+        // snapshot with TRANSPARENT fill (critical)
+        SnapshotParameters sp = new SnapshotParameters();
+        sp.setFill(Color.TRANSPARENT);
+        var snap = base.snapshot(sp, null);
+
         try {
             String name = f.getName().toLowerCase();
-            String fmt = name.endsWith(".jpg")||name.endsWith(".jpeg") ? "jpg" : "png";
+            String fmt = (name.endsWith(".jpg")||name.endsWith(".jpeg")) ? "jpg" : "png";
+            // NOTE: JPEG does not support alpha; PNG will preserve transparency.
             ImageIO.write(SwingFXUtils.fromFXImage(snap, null), fmt, f);
         } catch (IOException ex) { ex.printStackTrace(); }
     }

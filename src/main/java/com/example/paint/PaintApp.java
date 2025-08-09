@@ -18,8 +18,8 @@ public class PaintApp extends Application {
     private Tool currentTool;
 
     // Tools
-    private final PencilTool pencil = new PencilTool(false);
-    private final PencilTool eraser = new PencilTool(true);
+    private final PencilTool pencil = new PencilTool();
+    private final EraserTool eraser = new EraserTool();
     private final LineTool line = new LineTool();
     private final RectTool rect = new RectTool();
     private final EllipseTool ellipse = new EllipseTool();
@@ -49,6 +49,8 @@ public class PaintApp extends Application {
         scroller.setFitToWidth(true);
         scroller.setFitToHeight(true);
         scroller.setPannable(false);
+        scroller.setStyle("-fx-background: white; -fx-background-color: white;"); // <— always white
+        state.getViewport().setStyle("-fx-background-color: white;");             // <— always white
         state.bindToScrollPane(scroller);
 
         // Wheel zoom at cursor (stable, single handler)
