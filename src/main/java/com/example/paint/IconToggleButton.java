@@ -13,4 +13,3 @@ public class IconToggleButton extends ToggleButton {
         setFocusTraversable(false);
     }
 }
-

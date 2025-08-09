@@ -32,7 +32,6 @@ public class PaintApp extends Application {
     private final TextTool text = new TextTool();
     private final HandTool hand = new HandTool();
 
-    // theme
     private boolean darkTheme = true;
     private Scene scene;
 
@@ -42,26 +41,19 @@ public class PaintApp extends Application {
         history = new HistoryManager(state);
         select.setMoveTool(move);
 
-        // --- Top AppBar ---
         HBox appBar = buildAppBar(stage);
-
-        // --- Left Tool Palette ---
         VBox toolPalette = buildToolPalette();
-
-        // --- Right Properties Panel ---
         VBox properties = buildPropertiesPanel();
 
-        // --- Center Canvas (in scrollpane that resizes canvas) ---
         ScrollPane scroller = new ScrollPane(state.getViewport());
         scroller.setFitToWidth(true);
         scroller.setFitToHeight(true);
         scroller.setPannable(false);
         state.bindToScrollPane(scroller);
 
-        // Install wheel-zoom ONCE on the viewport (rock-solid pivot)
+        // Wheel zoom at cursor (stable, single handler)
         state.installWheelZoom(state.getViewport());
 
-        // Layout
         BorderPane root = new BorderPane();
         root.setTop(appBar);
         root.setLeft(toolPalette);
@@ -72,7 +64,7 @@ public class PaintApp extends Application {
         scene = new Scene(root, 1320, 860);
         applyTheme(); // load CSS
 
-        // window icon (optional)
+        // app icon (optional)
         try {
             stage.getIcons().add(new javafx.scene.image.Image(
                     Objects.requireNonNull(getClass().getResourceAsStream("/icon.png"))
@@ -84,7 +76,7 @@ public class PaintApp extends Application {
         state.getOverlay().setOnMouseDragged(e -> { if (currentTool != null) currentTool.onDrag(state, history, e); });
         state.getOverlay().setOnMouseReleased(e -> { if (currentTool != null) currentTool.onRelease(state, history, e); });
 
-        // keyboard
+        // hotkeys
         scene.setOnKeyPressed(e -> {
             switch (e.getCode()) {
                 case Z -> { if (e.isControlDown()) history.undo(); }
@@ -153,10 +145,8 @@ public class PaintApp extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(10,
-                title, spacer,
-                open, save, new Separator(), undo, redo, new Separator(), clear, new Separator(), theme
-        );
+        HBox bar = new HBox(10, title, spacer, open, save, new Separator(),
+                undo, redo, new Separator(), clear, new Separator(), theme);
         bar.getStyleClass().add("appbar");
         bar.setPadding(new Insets(10,12,10,12));
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -166,19 +156,19 @@ public class PaintApp extends Application {
     private VBox buildToolPalette() {
         ToggleGroup group = new ToggleGroup();
 
-        IconToggleButton bPencil  = toolBtn(IconFactory.pencil(), "Pencil (1)", group, () -> setTool(pencil), true);
-        IconToggleButton bEraser  = toolBtn(IconFactory.eraser(), "Eraser (2)", group, () -> setTool(eraser), false);
-        IconToggleButton bLine    = toolBtn(IconFactory.line(),   "Line (3)", group, () -> setTool(line),   false);
-        IconToggleButton bRect    = toolBtn(IconFactory.rect(),   "Rectangle (4)", group, () -> setTool(rect), false);
-        IconToggleButton bEllipse = toolBtn(IconFactory.ellipse(),"Ellipse (5)", group, () -> setTool(ellipse), false);
-        IconToggleButton bPoly    = toolBtn(IconFactory.polygon(),"Polygon (6)", group, () -> setTool(polygon), false);
-        IconToggleButton bSpray   = toolBtn(IconFactory.spray(),  "Spray (7)", group, () -> setTool(spray),  false);
-        IconToggleButton bBucket  = toolBtn(IconFactory.bucket(), "Bucket (8)", group, () -> setTool(bucket), false);
-        IconToggleButton bSelect  = toolBtn(IconFactory.select(), "Select (9)", group, () -> setTool(select), false);
-        IconToggleButton bMove    = toolBtn(IconFactory.move(),   "Move (0)", group, () -> setTool(move),    false);
-        IconToggleButton bPicker  = toolBtn(IconFactory.dropper(),"Eyedropper", group, () -> setTool(dropper), false);
-        IconToggleButton bText    = toolBtn(IconFactory.text(),   "Text", group, () -> setTool(text), false);
-        IconToggleButton bHand    = toolBtn(IconFactory.hand(),   "Pan (hold SPACE)", group, () -> setTool(hand), false);
+        IconToggleButton bPencil  = toolBtn(IconFactory.pencil(), "Pencil (1)", group, () -> setTool(pencil), true);  bPencil.getStyleClass().add("accent-green");
+        IconToggleButton bEraser  = toolBtn(IconFactory.eraser(), "Eraser (2)", group, () -> setTool(eraser), false); bEraser.getStyleClass().add("accent-rose");
+        IconToggleButton bLine    = toolBtn(IconFactory.line(),   "Line (3)", group, () -> setTool(line),   false);   bLine.getStyleClass().add("accent-cyan");
+        IconToggleButton bRect    = toolBtn(IconFactory.rect(),   "Rectangle (4)", group, () -> setTool(rect), false); bRect.getStyleClass().add("accent-indigo");
+        IconToggleButton bEllipse = toolBtn(IconFactory.ellipse(),"Ellipse (5)", group, () -> setTool(ellipse), false); bEllipse.getStyleClass().add("accent-purple");
+        IconToggleButton bPoly    = toolBtn(IconFactory.polygon(),"Polygon (6)", group, () -> setTool(polygon), false); bPoly.getStyleClass().add("accent-amber");
+        IconToggleButton bSpray   = toolBtn(IconFactory.spray(),  "Spray (7)", group, () -> setTool(spray),  false);   bSpray.getStyleClass().add("accent-teal");
+        IconToggleButton bBucket  = toolBtn(IconFactory.bucket(), "Bucket (8)", group, () -> setTool(bucket), false);  bBucket.getStyleClass().add("accent-blue");
+        IconToggleButton bSelect  = toolBtn(IconFactory.select(), "Select (9)", group, () -> setTool(select), false);  bSelect.getStyleClass().add("accent-orange");
+        IconToggleButton bMove    = toolBtn(IconFactory.move(),   "Move (0)", group, () -> setTool(move),    false);   bMove.getStyleClass().add("accent-lime");
+        IconToggleButton bPicker  = toolBtn(IconFactory.dropper(),"Eyedropper", group, () -> setTool(dropper), false); bPicker.getStyleClass().add("accent-pink");
+        IconToggleButton bText    = toolBtn(IconFactory.text(),   "Text", group, () -> setTool(text), false);          bText.getStyleClass().add("accent-sky");
+        IconToggleButton bHand    = toolBtn(IconFactory.hand(),   "Pan (hold SPACE)", group, () -> setTool(hand), false); bHand.getStyleClass().add("accent-slate");
 
         VBox box = new VBox(6, bPencil,bEraser,bLine,bRect,bEllipse,bPoly,bSpray,bBucket,bSelect,bMove,bPicker,bText,bHand);
         box.getStyleClass().add("tool-rail");
@@ -187,45 +177,61 @@ public class PaintApp extends Application {
     }
 
     private VBox buildPropertiesPanel() {
-        // Stroke & Fill
-        Label strokeLbl = new Label("Stroke");
-        strokeLbl.getStyleClass().add("section");
-        var stroke = state.getStrokePicker();
+        // --- Stroke ---
+        Label strokeHdr = new Label("Stroke");
+        strokeHdr.getStyleClass().add("section");
+        var strokePicker = state.getStrokePicker();
 
-        Label fillLbl = new Label("Fill");
-        fillLbl.getStyleClass().add("section");
-        var fill = state.getFillPicker();
+        var strokePalette = new ColorPalette("Quick Colors (Stroke)", strokePicker,
+                ColorPalette.vibrant24(), 8, 18);
 
-        // Brush
-        Label brushLbl = new Label("Brush");
-        brushLbl.getStyleClass().add("section");
+        // --- Fill ---
+        Label fillHdr = new Label("Fill");
+        fillHdr.getStyleClass().add("section");
+        var fillPicker = state.getFillPicker();
+
+        var fillPaletteMain = new ColorPalette("Quick Colors (Fill)", fillPicker,
+                ColorPalette.vibrant24(), 8, 18);
+        var fillPaletteNeutrals = new ColorPalette("Neutrals", fillPicker,
+                ColorPalette.neutrals10(), 10, 16);
+
+        // --- Brush ---
+        Label brushHdr = new Label("Brush");
+        brushHdr.getStyleClass().add("section");
         var brushRow = new HBox(10, new Label("Size"), state.getBrushSlider());
         brushRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Font
-        Label fontLbl = new Label("Text");
-        fontLbl.getStyleClass().add("section");
+        // --- Text ---
+        Label textHdr = new Label("Text");
+        textHdr.getStyleClass().add("section");
         var fontRow1 = new HBox(10, new Label("Family"), state.getFontFamilyBox());
         var fontRow2 = new HBox(10, new Label("Size"), state.getFontSizeSpinner(), state.getBoldCheck(), state.getItalicCheck());
         fontRow1.setAlignment(Pos.CENTER_LEFT);
         fontRow2.setAlignment(Pos.CENTER_LEFT);
 
-        VBox box = new VBox(16,
-                strokeLbl, stroke,
-                fillLbl, fill,
-                brushLbl, brushRow,
-                fontLbl, fontRow1, fontRow2
-        );
-        box.getStyleClass().add("prop-pane");
-        box.setPadding(new Insets(14));
+        // Wrap sections in “cards”
+        VBox strokeCard = card(strokeHdr, strokePicker, strokePalette);
+        VBox fillCard   = card(fillHdr, fillPicker, fillPaletteMain, fillPaletteNeutrals);
+        VBox brushCard  = card(brushHdr, brushRow);
+        VBox textCard   = card(textHdr, fontRow1, fontRow2);
+
+        VBox right = new VBox(16, strokeCard, fillCard, brushCard, textCard);
+        right.getStyleClass().add("prop-pane");
+        right.setPadding(new Insets(14));
+        return right;
+    }
+    private VBox card(javafx.scene.Node... children) {
+        VBox box = new VBox(8, children);
+        box.getStyleClass().add("card");
+        box.setPadding(new Insets(10));
         return box;
     }
 
     private HBox buildStatusBar() {
-        Label zoom = new Label();
-        zoom.textProperty().bind(state.statusProperty()); // reflect "zoom | pan" text
+        Label zoomReadout = new Label();
+        zoomReadout.textProperty().bind(state.statusProperty());
 
-        HBox bar = new HBox(10, zoom);
+        HBox bar = new HBox(10, zoomReadout);
         bar.getStyleClass().add("statusbar");
         bar.setPadding(new Insets(6,12,6,12));
         return bar;
@@ -265,6 +271,7 @@ public class PaintApp extends Application {
 
     private void applyTheme() {
         scene.getStylesheets().clear();
+        // load the paired theme (dark/light)
         scene.getStylesheets().add(getClass().getResource(darkTheme ? "/css/theme-dark.css" : "/css/theme-light.css").toExternalForm());
     }
 
