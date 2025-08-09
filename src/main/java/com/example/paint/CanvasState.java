@@ -57,6 +57,8 @@ public class CanvasState {
     private final Scale scale = new Scale(1.0, 1.0, 0, 0);
     private double zoom = 1.0;
     private static final double MIN_ZOOM = 0.1, MAX_ZOOM = 8.0;
+    private double lastMouseX = 24, lastMouseY = 24; // sensible default
+    private boolean hasMouse = false;
 
     public CanvasState() {
         // start fully transparent
@@ -83,6 +85,28 @@ public class CanvasState {
 
         fontFamily.getItems().addAll("Arial","System","Courier New","Times New Roman","Verdana","Consolas");
         fontFamily.setValue("Arial");
+
+        overlay.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_MOVED, e -> {
+            lastMouseX = e.getX();
+            lastMouseY = e.getY();
+            hasMouse = true;
+        });
+        overlay.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_DRAGGED, e -> {
+            lastMouseX = e.getX();
+            lastMouseY = e.getY();
+            hasMouse = true;
+        });
+        // Also update when moving over the base (in case overlay is clear)
+        base.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_MOVED, e -> {
+            lastMouseX = e.getX();
+            lastMouseY = e.getY();
+            hasMouse = true;
+        });
+        base.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_DRAGGED, e -> {
+            lastMouseX = e.getX();
+            lastMouseY = e.getY();
+            hasMouse = true;
+        });
     }
 
     // ---------- UI getters ----------
@@ -113,6 +137,9 @@ public class CanvasState {
     public double getSelX(){ return selX; }
     public double getSelY(){ return selY; }
     public void setSelPos(double x, double y){ selX=x; selY=y; }
+    public double getLastMouseX() { return lastMouseX; }
+    public double getLastMouseY() { return lastMouseY; }
+    public boolean hasMousePosition() { return hasMouse; }
 
     public void setStatus(String text){ statusProp.set(text); refreshHud(); }
     public StringProperty statusProperty(){ return statusProp; }
@@ -151,6 +178,15 @@ public class CanvasState {
         translate.setY(pivotInContainer.getY() - contentPoint.getY() * zoom);
 
         applyPanZoom();
+    }
+
+    /** Clamp a top-left paste position so the image stays fully on the canvas. */
+    public javafx.geometry.Point2D clampPasteTopLeft(double imgW, double imgH, double desiredX, double desiredY) {
+        double maxX = Math.max(0, getBase().getWidth()  - imgW);
+        double maxY = Math.max(0, getBase().getHeight() - imgH);
+        double px = Math.min(Math.max(0, desiredX), maxX);
+        double py = Math.min(Math.max(0, desiredY), maxY);
+        return new javafx.geometry.Point2D(px, py);
     }
 
     public void installWheelZoom(Node node) {

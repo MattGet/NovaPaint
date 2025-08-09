@@ -9,11 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PencilTool implements Tool {
-
     private final List<double[]> points = new ArrayList<>();
     private Cursor currentCursor = Cursor.DEFAULT;
     private ChangeListener<Number> brushListener;
     private ChangeListener<Color> colorListener;
+    private boolean drew = false; // track if anything was actually drawn
 
     @Override public String getName(){ return "Pencil"; }
 
@@ -44,10 +44,10 @@ public class PencilTool implements Tool {
 
     @Override
     public void onPress(CanvasState s, HistoryManager h, MouseEvent e) {
-        h.push(); // <— capture BEFORE drawing
         points.clear();
-        points.add(new double[]{e.getX(), e.getY()});
+        drew = false;
 
+        points.add(new double[]{e.getX(), e.getY()});
         GraphicsContext g = s.getBase().getGraphicsContext2D();
         g.setStroke(s.getStroke());
         g.setLineWidth(s.getBrush());
@@ -67,6 +67,7 @@ public class PencilTool implements Tool {
         if (points.size() < 3) {
             g.lineTo(e.getX(), e.getY());
             g.stroke();
+            drew = true;
             return;
         }
         int last = points.size() - 1;
@@ -83,10 +84,13 @@ public class PencilTool implements Tool {
         g.moveTo(midX1, midY1);
         g.quadraticCurveTo(p1[0], p1[1], midX2, midY2);
         g.stroke();
+        drew = true;
     }
 
     @Override
     public void onRelease(CanvasState s, HistoryManager h, MouseEvent e) {
+        if (drew) h.push();   // save exactly once per stroke, after finishing
         points.clear();
+        drew = false;
     }
 }
