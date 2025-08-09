@@ -19,13 +19,13 @@ public class PaintApp extends Application {
     private CanvasState state;
     private HistoryManager history;
 
-    // Single current tool instance (we reuse tool objects)
+    // Single current tool
     private Tool currentTool;
 
-    // One ToggleGroup for all tool buttons (prevents double-click problem)
+    // One ToggleGroup for all tool buttons (prevents double-click quirk)
     private final ToggleGroup toolGroup = new ToggleGroup();
 
-    // Tools (reused singletons)
+    // Tools (single instances)
     private final PencilTool pencil = new PencilTool();
     private final EraserTool eraser = new EraserTool();
     private final LineTool line = new LineTool();
@@ -48,16 +48,20 @@ public class PaintApp extends Application {
         state = new CanvasState();
         history = new HistoryManager(state);
 
+        // default colors
+        state.getFillPicker().setValue(javafx.scene.paint.Color.BLACK);
+        state.getStrokePicker().setValue(javafx.scene.paint.Color.BLACK);
+
         HBox appBar = buildAppBar(stage);
-        VBox toolPalette = buildToolPalette();       // uses shared toolGroup
-        VBox properties = buildPropertiesPanel();
+        VBox toolPalette = buildToolPalette(); // uses shared toolGroup
+        ScrollPane properties = buildPropertiesPanel(); // SCROLLABLE right side
 
         ScrollPane scroller = new ScrollPane(state.getViewport());
         scroller.setFitToWidth(true);
         scroller.setFitToHeight(true);
         scroller.setPannable(false);
-        scroller.setStyle("-fx-background: white; -fx-background-color: white;"); // always white around canvas
-        state.getViewport().setStyle("-fx-background-color: white;");             // always white around canvas
+        scroller.setStyle("-fx-background: white; -fx-background-color: white;");
+        state.getViewport().setStyle("-fx-background-color: white;");
         state.bindToScrollPane(scroller);
 
         // Wheel zoom at cursor
@@ -73,7 +77,7 @@ public class PaintApp extends Application {
         scene = new Scene(root, 1320, 860);
         applyTheme();
 
-        // --- Robust global accelerators (work regardless of focus) ---
+        // --- Global accelerators ---
         scene.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.C, KeyCombination.SHORTCUT_DOWN),
                 () -> { if (currentTool instanceof SelectTool st) st.copySelection(state); }
@@ -86,7 +90,6 @@ public class PaintApp extends Application {
                 new KeyCodeCombination(KeyCode.V, KeyCombination.SHORTCUT_DOWN),
                 () -> { if (currentTool instanceof SelectTool st) st.pasteFromClipboard(state, history); }
         );
-        // Undo / Redo (Ctrl+Z / Shift+Ctrl+Z / Ctrl+Y)
         scene.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN),
                 () -> history.undo()
@@ -100,7 +103,7 @@ public class PaintApp extends Application {
                 () -> history.redo()
         );
 
-        // Fallback filter only for Select clipboard ops (optional)
+        // Optional fallback only for Select ops
         scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
             if (!e.isShortcutDown()) return;
             switch (e.getCode()) {
@@ -118,54 +121,42 @@ public class PaintApp extends Application {
             ));
         } catch (Exception ignore) {}
 
-        // Route drawing events to current tool (overlay receives input)
+        // Route drawing events to current tool (overlay handles input)
         state.getOverlay().setOnMousePressed(e -> { if (currentTool != null) currentTool.onPress(state, history, e); });
         state.getOverlay().setOnMouseDragged(e -> { if (currentTool != null) currentTool.onDrag(state, history, e); });
         state.getOverlay().setOnMouseReleased(e -> { if (currentTool != null) currentTool.onRelease(state, history, e); });
 
-        // Hotkeys that are NOT accelerators (digits for tool switching, Esc/Enter for tooling)
+        // Non-accelerator keys (digits for tool switch, Esc/Enter)
         scene.setOnKeyPressed(e -> {
             switch (e.getCode()) {
                 case ESCAPE -> { if (currentTool != null) currentTool.onCancel(state, history); }
-                case ENTER -> {
-                    if (currentTool instanceof PolygonCapable p) p.commitPolygon(state, history);
-                }
-                case DIGIT1 -> selectToolByShortcut(pencil);
-                case DIGIT2 -> selectToolByShortcut(eraser);
-                case DIGIT3 -> selectToolByShortcut(line);
-                case DIGIT4 -> selectToolByShortcut(rect);
-                case DIGIT5 -> selectToolByShortcut(ellipse);
-                case DIGIT6 -> selectToolByShortcut(polygon);
-                case DIGIT7 -> selectToolByShortcut(spray);
-                case DIGIT8 -> selectToolByShortcut(bucket);
-                case DIGIT9 -> selectToolByShortcut(select);
-                case DIGIT0 -> selectToolByShortcut(move);
+                case ENTER -> { if (currentTool instanceof PolygonCapable p) p.commitPolygon(state, history); }
+                case DIGIT1 -> selectToggleForTool(pencil);
+                case DIGIT2 -> selectToggleForTool(eraser);
+                case DIGIT3 -> selectToggleForTool(line);
+                case DIGIT4 -> selectToggleForTool(rect);
+                case DIGIT5 -> selectToggleForTool(ellipse);
+                case DIGIT6 -> selectToggleForTool(polygon);
+                case DIGIT7 -> selectToggleForTool(spray);
+                case DIGIT8 -> selectToggleForTool(bucket);
+                case DIGIT9 -> selectToggleForTool(select);
+                case DIGIT0 -> selectToggleForTool(move);
                 default -> {}
             }
         });
 
-        // ONE listener to handle tool switching for all buttons
+        // ONE listener controls tool switching
         toolGroup.selectedToggleProperty().addListener((obs, oldT, newT) -> {
             if (newT == null) {
-                toolGroup.selectToggle(oldT);   // prevent no-selection state
+                toolGroup.selectToggle(oldT); // prevent no-selection state
                 return;
             }
             Tool next = (Tool) newT.getUserData();
             switchTool(next);
         });
 
-        // Select default tool by selecting its toggle (which triggers switchTool)
+        // Force-init default tool (Pencil) AFTER listener is attached
         selectToggleForTool(pencil);
-
-        // Default fill color to black
-        state.getFillPicker().setValue(javafx.scene.paint.Color.BLACK);
-        // set default colors
-        state.getFillPicker().setValue(javafx.scene.paint.Color.BLACK);
-        state.getStrokePicker().setValue(javafx.scene.paint.Color.BLACK);
-
-        // attach the listener first (already in your code), then:
-        selectToggleForTool(pencil); // Pencil as true default, fully initialized
-
 
         stage.setTitle("NovaPaint");
         stage.setScene(scene);
@@ -237,19 +228,17 @@ public class PaintApp extends Application {
         IconToggleButton bText    = toolBtn(IconFactory.text(),    "Text",        text);    bText.getStyleClass().add("accent-sky");
         IconToggleButton bHand    = toolBtn(IconFactory.hand(),    "Pan (hold SPACE)", hand); bHand.getStyleClass().add("accent-slate");
 
-
         VBox box = new VBox(6, bPencil,bEraser,bLine,bRect,bEllipse,bPoly,bSpray,bBucket,bSelect,bMove,bPicker,bText,bHand);
         box.getStyleClass().add("tool-rail");
         box.setPadding(new Insets(10));
         return box;
     }
 
-    private VBox buildPropertiesPanel() {
+    private ScrollPane buildPropertiesPanel() {
         // --- Stroke ---
         Label strokeHdr = new Label("Stroke");
         strokeHdr.getStyleClass().add("section");
         var strokePicker = state.getStrokePicker();
-
         var strokePalette = new ColorPalette("Quick Colors (Stroke)", strokePicker,
                 ColorPalette.vibrant24(), 8, 18);
 
@@ -257,7 +246,6 @@ public class PaintApp extends Application {
         Label fillHdr = new Label("Fill");
         fillHdr.getStyleClass().add("section");
         var fillPicker = state.getFillPicker();
-
         var fillPaletteMain = new ColorPalette("Quick Colors (Fill)", fillPicker,
                 ColorPalette.vibrant24(), 8, 18);
         var fillPaletteNeutrals = new ColorPalette("Neutrals", fillPicker,
@@ -273,20 +261,55 @@ public class PaintApp extends Application {
         Label textHdr = new Label("Text");
         textHdr.getStyleClass().add("section");
         var fontRow1 = new HBox(10, new Label("Family"), state.getFontFamilyBox());
-        var fontRow2 = new HBox(10, new Label("Size"), state.getFontSizeSpinner(), state.getBoldCheck(), state.getItalicCheck());
+        var fontRow2 = new HBox(10, new Label("Size"), state.getFontSizeSpinner(),
+                state.getBoldCheck(), state.getItalicCheck());
         fontRow1.setAlignment(Pos.CENTER_LEFT);
         fontRow2.setAlignment(Pos.CENTER_LEFT);
 
-        // Wrap sections in “cards”
+        // --- Bucket Fill controls (tolerance/connectivity/expand) ---
+        Label bucketHdr = new Label("Bucket Fill");
+        bucketHdr.getStyleClass().add("section");
+
+        Slider tol = new Slider(0, 0.4, state.getFillTolerance());
+        tol.setShowTickMarks(true);
+        tol.setShowTickLabels(true);
+        tol.setMajorTickUnit(0.1);
+        tol.setBlockIncrement(0.02);
+        tol.valueProperty().addListener((obs, o, v) -> state.fillToleranceProperty().set(v.doubleValue()));
+
+        CheckBox diag = new CheckBox("Diagonal connect (8-way)");
+        diag.setSelected(state.isFillDiagonalConnectivity());
+        diag.selectedProperty().addListener((obs, o, v) -> state.fillDiagonalConnectivityProperty().set(v));
+
+        Spinner<Integer> expand = new Spinner<>(0, 3, state.getFillExpandPixels());
+        expand.setEditable(false);
+        expand.valueProperty().addListener((obs, o, v) -> state.fillExpandPixelsProperty().set(v));
+
         VBox strokeCard = card(strokeHdr, strokePicker, strokePalette);
         VBox fillCard   = card(fillHdr, fillPicker, fillPaletteMain, fillPaletteNeutrals);
         VBox brushCard  = card(brushHdr, brushRow);
         VBox textCard   = card(textHdr, fontRow1, fontRow2);
+        VBox bucketCard = card(bucketHdr,
+                new HBox(10, new Label("Tolerance"), tol),
+                new HBox(10, new Label("Expand px"), expand),
+                diag
+        );
 
-        VBox right = new VBox(16, strokeCard, fillCard, brushCard, textCard);
-        right.getStyleClass().add("prop-pane");
-        right.setPadding(new Insets(14));
-        return right;
+        // Put all cards into a VBox
+        VBox content = new VBox(16, strokeCard, fillCard, brushCard, textCard, bucketCard);
+        content.getStyleClass().add("prop-pane");
+        content.setPadding(new Insets(14));
+        
+        content.setPrefWidth(280); // adjust to your old right-pane width
+
+        // Wrap in a ScrollPane so the right side is scrollable
+        ScrollPane sp = new ScrollPane(content);
+        sp.setFitToWidth(true);
+        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sp.getStyleClass().add("prop-scroll");
+
+        return sp;
     }
 
     private VBox card(javafx.scene.Node... children) {
@@ -316,7 +339,6 @@ public class PaintApp extends Application {
         return b;
     }
 
-
     private Button topButton(javafx.scene.Node icon, String tip) {
         Button b = new Button();
         b.getStyleClass().add("top-icon-button");
@@ -344,25 +366,19 @@ public class PaintApp extends Application {
         state.setStatus("Tool: " + currentTool.getName());
     }
 
-    // Programmatically select a tool via keyboard shortcut (selects the corresponding toggle)
-    private void selectToolByShortcut(Tool tool) {
-        selectToggleForTool(tool); // triggers switchTool via listener
-    }
-
+    // Programmatically select a tool (digits); initializes even if already selected
     private void selectToggleForTool(Tool tool) {
         for (var t : toolGroup.getToggles()) {
             if (t.getUserData() == tool) {
                 if (toolGroup.getSelectedToggle() == t) {
-                    // If already selected (e.g., preselected earlier), force init
-                    switchTool(tool);
+                    switchTool(tool); // force init if already selected
                 } else {
-                    toolGroup.selectToggle(t); // will trigger switchTool via listener
+                    toolGroup.selectToggle(t); // triggers switchTool via listener
                 }
                 return;
             }
         }
     }
-
 
     private void applyTheme() {
         scene.getStylesheets().clear();

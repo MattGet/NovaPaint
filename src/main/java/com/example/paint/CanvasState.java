@@ -83,6 +83,10 @@ public class CanvasState {
         fillPicker.setOnAction(e -> fill = fillPicker.getValue());
         brushSlider.valueProperty().addListener((o,a,v)-> brush = v.doubleValue());
 
+        // In CanvasState constructor, after creating fillPicker:
+        fillPicker.setValue(javafx.scene.paint.Color.BLACK); // safe default so fill is never null
+
+
         fontFamily.getItems().addAll("Arial","System","Courier New","Times New Roman","Verdana","Consolas");
         fontFamily.setValue("Arial");
 
@@ -143,6 +147,26 @@ public class CanvasState {
 
     public void setStatus(String text){ statusProp.set(text); refreshHud(); }
     public StringProperty statusProperty(){ return statusProp; }
+
+    // ---- Bucket Fill settings ----
+    private final javafx.beans.property.DoubleProperty fillTolerance =
+            new javafx.beans.property.SimpleDoubleProperty(0.12); // default ~friendly
+
+    private final javafx.beans.property.BooleanProperty fillDiagonalConnectivity =
+            new javafx.beans.property.SimpleBooleanProperty(true); // 8-way by default
+
+    private final javafx.beans.property.IntegerProperty fillExpandPixels =
+            new javafx.beans.property.SimpleIntegerProperty(1);    // expand 1px default
+
+    public double getFillTolerance() { return fillTolerance.get(); }
+    public javafx.beans.property.DoubleProperty fillToleranceProperty() { return fillTolerance; }
+
+    public boolean isFillDiagonalConnectivity() { return fillDiagonalConnectivity.get(); }
+    public javafx.beans.property.BooleanProperty fillDiagonalConnectivityProperty() { return fillDiagonalConnectivity; }
+
+    public int getFillExpandPixels() { return fillExpandPixels.get(); }
+    public javafx.beans.property.IntegerProperty fillExpandPixelsProperty() { return fillExpandPixels; }
+
 
     // ---------- Pan & Zoom ----------
     public void applyPanZoom(){
