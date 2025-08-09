@@ -299,7 +299,7 @@ public class PaintApp extends Application {
         VBox content = new VBox(16, strokeCard, fillCard, brushCard, textCard, bucketCard);
         content.getStyleClass().add("prop-pane");
         content.setPadding(new Insets(14));
-        
+
         content.setPrefWidth(280); // adjust to your old right-pane width
 
         // Wrap in a ScrollPane so the right side is scrollable

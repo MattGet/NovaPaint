@@ -83,8 +83,20 @@ public class CanvasState {
         fillPicker.setOnAction(e -> fill = fillPicker.getValue());
         brushSlider.valueProperty().addListener((o,a,v)-> brush = v.doubleValue());
 
-        // In CanvasState constructor, after creating fillPicker:
-        fillPicker.setValue(javafx.scene.paint.Color.BLACK); // safe default so fill is never null
+        fillPicker.setValue(javafx.scene.paint.Color.BLACK);
+        strokePicker.setValue(javafx.scene.paint.Color.BLACK);
+        this.fill = fillPicker.getValue();
+        this.stroke = strokePicker.getValue();
+
+        // Wire pickers -> internal colors the tools read
+        strokePicker.valueProperty().addListener((obs, oldC, newC) -> {
+            this.stroke = newC != null ? newC : javafx.scene.paint.Color.BLACK;
+            setStatus("Stroke: " + toHex(this.stroke));
+        });
+        fillPicker.valueProperty().addListener((obs, oldC, newC) -> {
+            this.fill = newC != null ? newC : javafx.scene.paint.Color.BLACK;
+            setStatus("Fill: " + toHex(this.fill));
+        });
 
 
         fontFamily.getItems().addAll("Arial","System","Courier New","Times New Roman","Verdana","Consolas");
@@ -334,5 +346,12 @@ public class CanvasState {
 
     private void refreshHud() {
         statusProp.set(String.format("Zoom %.2f×   Pan(%.0f, %.0f)", zoom, translate.getX(), translate.getY()));
+    }
+
+    private static String toHex(javafx.scene.paint.Color c) {
+        int r = (int)Math.round(c.getRed()*255);
+        int g = (int)Math.round(c.getGreen()*255);
+        int b = (int)Math.round(c.getBlue()*255);
+        return String.format("#%02X%02X%02X", r, g, b);
     }
 }
