@@ -11,9 +11,15 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-
-        <!-- Upgrade JavaFX to reduce Unsafe warnings -->
         <javafx.version>22.0.1</javafx.version>
+
+        <!-- App metadata used by jpackage -->
+        <app.name>NovaPaint</app.name>
+        <app.vendor>Your Company</app.vendor>
+        <app.version>1.0.0</app.version>
+
+        <!-- default (overridden per OS profile) -->
+        <jpackage.executable>jpackage</jpackage.executable>
     </properties>
 
     <dependencies>
@@ -32,7 +38,7 @@
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-        <!-- Keep only if you still use SwingFXUtils or Swing interop -->
+        <!-- Keep only if you use SwingFXUtils/ImageIO interop -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
@@ -41,30 +47,187 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes><include>**/*</include></includes>
+            </resource>
+        </resources>
+
         <plugins>
-            <!-- Compile for Java 17 -->
+            <!-- Java 17 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <release>17</release>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
-            <!-- Run with: mvn javafx:run -->
+            <!-- Executable shaded JAR (optional, still available) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>shaded</shadedClassifierName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.example.paint.PaintApp</mainClass>
+                                </transformer>
+                            </transformers>
+                            <minimizeJar>false</minimizeJar>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- JavaFX runtime image -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.example.paint.PaintApp</mainClass>
+                    <launcher>NovaPaint</launcher>
+                    <stripDebug>true</stripDebug>
+                    <noHeaderFiles>true</noHeaderFiles>
+                    <noManPages>true</noManPages>
+                    <compress>2</compress>
+                    <addModules>javafx.controls,javafx.graphics,javafx.fxml,javafx.swing,java.desktop</addModules>
                     <jvmArgs>
-                        <!-- Remove “native access” warning -->
                         <jvmArg>--enable-native-access=ALL-UNNAMED</jvmArg>
                     </jvmArgs>
                 </configuration>
             </plugin>
+
+            <!-- Call the JDK's jpackage directly -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Windows installer (.exe). Requires icons at these paths -->
+        <profile>
+            <id>win</id>
+            <activation><os><family>Windows</family></os></activation>
+            <properties>
+                <jpackage.executable>"C:\Program Files\Java\jdk-24\bin\jpackage.exe"</jpackage.executable>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jpackage-win</id>
+                                <phase>package</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>${jpackage.executable}</executable>
+                                    <arguments>
+                                        <argument>--name</argument><argument>NovaPaint</argument>
+                                        <argument>--app-version</argument><argument>1.0.0</argument>
+                                        <argument>--vendor</argument><argument>Your Company</argument>
+                                        <argument>--type</argument><argument>exe</argument>
+                                        <argument>--input</argument><argument>${project.build.directory}</argument>
+                                        <argument>--main-jar</argument><argument>${project.artifactId}-${project.version}.jar</argument>
+                                        <argument>--main-class</argument><argument>com.example.paint.PaintApp</argument>
+                                        <argument>--runtime-image</argument><argument>${project.build.directory}/${project.artifactId}-${project.version}</argument>
+                                        <argument>--icon</argument><argument>src/main/resources/packaging/icon.ico</argument>
+                                        <argument>--win-console</argument><argument>false</argument>
+                                        <argument>--java-options</argument><argument>--enable-native-access=ALL-UNNAMED</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+
+        <!-- macOS DMG -->
+        <profile>
+            <id>mac</id>
+            <activation><os><family>mac</family></os></activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jpackage-mac</id>
+                                <phase>none</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>jpackage</executable>
+                                    <arguments>
+                                        <argument>--name</argument><argument>NovaPaint</argument>
+                                        <argument>--app-version</argument><argument>1.0.0</argument>
+                                        <argument>--vendor</argument><argument>Your Company</argument>
+                                        <argument>--type</argument><argument>dmg</argument>
+                                        <argument>--input</argument><argument>${project.build.directory}</argument>
+                                        <argument>--main-jar</argument><argument>${project.artifactId}-${project.version}.jar</argument>
+                                        <argument>--main-class</argument><argument>com.example.paint.PaintApp</argument>
+                                        <argument>--runtime-image</argument><argument>${project.build.directory}/${project.artifactId}-${project.version}</argument>
+                                        <argument>--icon</argument><argument>src/main/resources/packaging/icon.icns</argument>
+                                        <argument>--java-options</argument><argument>--enable-native-access=ALL-UNNAMED</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Linux DEB -->
+        <profile>
+            <id>linux</id>
+            <activation><os><family>unix</family></os></activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jpackage-linux</id>
+                                <phase>none</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>jpackage</executable>
+                                    <arguments>
+                                        <argument>--name</argument><argument>NovaPaint</argument>
+                                        <argument>--app-version</argument><argument>1.0.0</argument>
+                                        <argument>--vendor</argument><argument>Your Company</argument>
+                                        <argument>--type</argument><argument>deb</argument>
+                                        <argument>--input</argument><argument>${project.build.directory}</argument>
+                                        <argument>--main-jar</argument><argument>${project.artifactId}-${project.version}.jar</argument>
+                                        <argument>--main-class</argument><argument>com.example.paint.PaintApp</argument>
+                                        <argument>--runtime-image</argument><argument>${project.build.directory}/${project.artifactId}-${project.version}</argument>
+                                        <argument>--icon</argument><argument>src/main/resources/packaging/icon.png</argument>
+                                        <argument>--java-options</argument><argument>--enable-native-access=ALL-UNNAMED</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
