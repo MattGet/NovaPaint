@@ -11,7 +11,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <javafx.version>21.0.2</javafx.version>
+
+        <!-- Upgrade JavaFX to reduce Unsafe warnings -->
+        <javafx.version>22.0.1</javafx.version>
     </properties>
 
     <dependencies>
@@ -30,6 +32,7 @@
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <!-- Keep only if you still use SwingFXUtils or Swing interop -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
@@ -55,8 +58,11 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <!-- PaintApp already contains public static void main -->
                     <mainClass>com.example.paint.PaintApp</mainClass>
+                    <jvmArgs>
+                        <!-- Remove “native access” warning -->
+                        <jvmArg>--enable-native-access=ALL-UNNAMED</jvmArg>
+                    </jvmArgs>
                 </configuration>
             </plugin>
         </plugins>
